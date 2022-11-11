@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rkapp
+  namespace: smu-team02
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rkapp
+  template:
+    metadata:
+      labels:
+        app: rkapp
+        version: v1
+    spec:
+      containers:
+      - name: rkapp
+        image: yzq1780/rkapp:latest
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+          requests:
+            memory: 32Mi
+        ports:
+        - containerPort: 4004
+          name: http
+        envFrom:
+          - secretRef:
+              name: ebs-t2-riverkleaner-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rkapp
+  labels:
+    app: rkapp
+spec:
+  ports:
+  - port: 4004
+    name: http
+    targetPort: 4004
+  selector:
+    app: rkapp
+
+---
+apiVersion: gateway.kyma-project.io/v1alpha1
+kind: APIRule
+metadata:
+  name: rkapp-smu-team02-rule
+  namespace: smu-team02
+spec:
+  gateway: kyma-gateway.kyma-system.svc.cluster.local
+  service:
+    name: rkapp
+    port: 4004
+    host: rkapp-smu-team02
+  rules:
+    - path: /.*
+      methods: ["GET","POST"]
+      mutators: []
+      accessStrategies:
+      - handler: allow
